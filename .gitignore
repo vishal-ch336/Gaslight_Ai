@@ -1,0 +1,45 @@
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.mypy_cache/
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+lib/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Databases and Runtime Data
+*.db
+*.sqlite
+*.sqlite3
+backend/sandbox.db
+
+# Configuration and Env files
+.env
+.env.*
+!.env.example
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# Logs and debug files
+*.log
+pip-log.txt
+uvicorn.log
+
+# System/OS Metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
