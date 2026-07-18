@@ -1,5 +1,6 @@
 const TOKEN_KEY = 'gaslight_token';
 const EMAIL_KEY = 'gaslight_email';
+const USER_ID_KEY = 'gaslight_user_id';
 
 /**
  * Store the JWT access token in localStorage.
@@ -21,6 +22,7 @@ export function getToken(): string | null {
 export function removeToken(): void {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(EMAIL_KEY);
+  localStorage.removeItem(USER_ID_KEY);
 }
 
 /**
@@ -45,4 +47,21 @@ export function storeEmail(email: string): void {
  */
 export function getEmail(): string | null {
   return localStorage.getItem(EMAIL_KEY);
+}
+
+/**
+ * Persist the numeric user ID from the backend.
+ */
+export function storeUserId(id: number): void {
+  localStorage.setItem(USER_ID_KEY, String(id));
+}
+
+/**
+ * Retrieve the stored numeric user ID, or null if none exists.
+ */
+export function getUserId(): number | null {
+  const raw = localStorage.getItem(USER_ID_KEY);
+  if (raw === null) return null;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : null;
 }

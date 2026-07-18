@@ -53,6 +53,8 @@ export interface HistoryEntry extends AttackResult {
 export interface AuthToken {
   access_token: string;
   token_type: string;
+  user_id: number;
+  email: string;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -121,7 +123,7 @@ function jsonPost(body: Record<string, unknown>): RequestInit {
 export async function executeAttack(
   attackText: string,
   defensesActive: DefensesActive,
-  userId: string | null = null,
+  userId: number | null = null,
 ): Promise<ApiResponse<AttackResult>> {
   return safeFetch<AttackResult>(
     `${API_BASE}/api/attack/execute`,
@@ -140,7 +142,7 @@ export async function executeAttack(
 export async function verifyFix(
   originalAttackText: string,
   newDefensesActive: DefensesActive,
-  userId: string | null = null,
+  userId: number | null = null,
 ): Promise<ApiResponse<VerifyResult>> {
   return safeFetch<VerifyResult>(
     `${API_BASE}/api/attack/verify`,
@@ -163,13 +165,13 @@ export async function getPresets(): Promise<ApiResponse<Preset[]>> {
  * Fetch execution history for a user. Returns empty array if no userId given.
  */
 export async function getHistory(
-  userId: string | null | undefined,
+  userId: number | null | undefined,
 ): Promise<ApiResponse<HistoryEntry[]>> {
-  if (!userId) {
+  if (!userId && userId !== 0) {
     return { data: [], error: null };
   }
   return safeFetch<HistoryEntry[]>(
-    `${API_BASE}/api/attacks/history?user_id=${encodeURIComponent(userId)}`,
+    `${API_BASE}/api/attacks/history?user_id=${encodeURIComponent(String(userId))}`,
     { method: 'GET' },
   );
 }

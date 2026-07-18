@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import * as api from './api';
-import { storeToken, getToken, removeToken, storeEmail, getEmail } from './auth';
+import { storeToken, getToken, removeToken, storeEmail, getEmail, storeUserId, getUserId } from './auth';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 interface AuthState {
   token: string | null;
   userEmail: string | null;
+  userId: number | null;
   isAuthenticated: boolean;
 }
 
@@ -32,9 +33,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Rehydrate from localStorage on mount
     const token = getToken();
     const email = getEmail();
+    const userId = getUserId();
     return {
       token,
       userEmail: email,
+      userId,
       isAuthenticated: !!token,
     };
   });
@@ -43,8 +46,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data, error } = await api.login(email, password);
     if (data) {
       storeToken(data.access_token);
-      storeEmail(email);
-      setAuthState({ token: data.access_token, userEmail: email, isAuthenticated: true });
+      storeEmail(data.email ?? email);
+      storeUserId(data.user_id);
+      setAuthState({ token: data.access_token, userEmail: data.email ?? email, userId: data.user_id, isAuthenticated: true });
       return { success: true, error: null };
     }
     // Fallback: accept demo credentials when backend is unreachable
@@ -52,7 +56,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const mockToken = 'demo_mock_token_' + Date.now();
       storeToken(mockToken);
       storeEmail(email);
-      setAuthState({ token: mockToken, userEmail: email, isAuthenticated: true });
+      storeUserId(-1);
+      setAuthState({ token: mockToken, userEmail: email, userId: -1, isAuthenticated: true });
       return { success: true, error: null };
     }
     return { success: false, error: error || 'Login failed' };
@@ -62,8 +67,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data, error } = await api.signup(email, password);
     if (data) {
       storeToken(data.access_token);
-      storeEmail(email);
-      setAuthState({ token: data.access_token, userEmail: email, isAuthenticated: true });
+      storeEmail(data.email ?? email);
+      storeUserId(data.user_id);
+      setAuthState({ token: data.access_token, userEmail: data.email ?? email, userId: data.user_id, isAuthenticated: true });
       return { success: true, error: null };
     }
     // Fallback: allow mock signup when backend is unreachable
@@ -71,7 +77,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const mockToken = 'demo_mock_token_' + Date.now();
       storeToken(mockToken);
       storeEmail(email);
-      setAuthState({ token: mockToken, userEmail: email, isAuthenticated: true });
+      storeUserId(-1);
+      setAuthState({ token: mockToken, userEmail: email, userId: -1, isAuthenticated: true });
       return { success: true, error: null };
     }
     return { success: false, error: error || 'Signup failed' };
@@ -79,7 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     removeToken();
-    setAuthState({ token: null, userEmail: null, isAuthenticated: false });
+    setAuthState({ token: null, userEmail: null, userId: null, isAuthenticated: false });
   }, []);
 
   return (

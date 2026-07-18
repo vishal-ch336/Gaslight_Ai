@@ -153,9 +153,9 @@ export function Dashboard() {
 
   useEffect(() => {
     let cancelled = false;
-    if (!auth.userEmail) return;
+    if (!auth.userId && auth.userId !== 0) return;
     (async () => {
-      const { data } = await api.getHistory(auth.userEmail);
+      const { data } = await api.getHistory(auth.userId);
       if (!cancelled && data && data.length > 0) {
         setHistory(
           data.map((h) => ({
@@ -172,7 +172,7 @@ export function Dashboard() {
       }
     })();
     return () => { cancelled = true; };
-  }, [auth.userEmail]);
+  }, [auth.userId]);
 
   const clearTimeouts = () => {
     timeoutsRef.current.forEach(clearTimeout);
@@ -218,7 +218,7 @@ export function Dashboard() {
     const { data, error } = await api.executeAttack(
       attackText,
       toApiDefenses(defenses),
-      auth.userEmail,
+      auth.userId,
     );
 
     clearTimeouts();
@@ -253,7 +253,7 @@ export function Dashboard() {
       },
       ...prev,
     ].slice(0, 8));
-  }, [attackText, status, defenses, charCount, tokenEst, activeCount, auth.userEmail]);
+  }, [attackText, status, defenses, charCount, tokenEst, activeCount, auth.userId]);
 
   // ── Verify Fix ─────────────────────────────────────────────────────────
 
@@ -262,10 +262,17 @@ export function Dashboard() {
     setVerifyError(null);
     setVerifyResult(null);
 
+    const requestBody = {
+      original_attack_text: attackText,
+      new_defenses_active: toApiDefenses(verifyDefenses),
+      user_id: auth.userId,
+    };
+    console.log('[VerifyFix] Request body:', JSON.stringify(requestBody, null, 2));
+
     const { data, error } = await api.verifyFix(
       attackText,
       toApiDefenses(verifyDefenses),
-      auth.userEmail,
+      auth.userId,
     );
 
     if (error || !data) {
@@ -274,9 +281,10 @@ export function Dashboard() {
       return;
     }
 
+    console.log('[VerifyFix] Response:', JSON.stringify(data, null, 2));
     setVerifyResult(data);
     setVerifyStatus(data.verified_fix ? 'verified' : 'vulnerable');
-  }, [attackText, verifyDefenses, auth.userEmail]);
+  }, [attackText, verifyDefenses, auth.userId]);
 
   // ── Security log for fallback (when API log is empty) ──────────────────
 
@@ -606,7 +614,7 @@ export function Dashboard() {
                 </span>
               </div>
             </div>
-            <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+            <div className="flex flex-col gap-1.5 overflow-y-auto pb-0.5">
               {history.slice(0, 5).map((h, i) => (
                 <button
                   key={i}
@@ -927,7 +935,7 @@ export function Dashboard() {
                           variant="danger"
                           size="sm"
                           className="w-full"
-                          onClick={() => { setShowVerifyPanel(true); setVerifyDefenses({ xml: true, blacklist: true, guardian: true }); }}
+                          onClick={() => { setShowVerifyPanel(true); setVerifyDefenses({ ...defenses }); }}
                         >
                           <span className="flex items-center gap-2">
                             <RefreshCw size={11} />
@@ -990,32 +998,135 @@ export function Dashboard() {
                             </Button>
                           </div>
 
-                          {/* Verify result banner */}
+                          {/* Verify result — full details */}
                           <AnimatePresence>
-                            {verifyStatus === 'verified' && (
+                            {(verifyStatus === 'verified' || verifyStatus === 'vulnerable') && verifyResult && (
                               <motion.div
-                                initial={{ opacity: 0, y: 4 }}
+                                initial={{ opacity: 0, y: 6 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0 }}
-                                className="flex items-center gap-2 px-3 py-2.5 border border-[#AED16C]/30 rounded-[2px] bg-[#AED16C]/[0.06]"
+                                className="flex flex-col gap-3 border-t border-[#C9A86A]/10 pt-3 mt-1"
                               >
-                                <CheckCircle2 size={13} className="text-[#AED16C] shrink-0" />
-                                <span className="font-['Inter'] font-light text-[11px] uppercase tracking-[0.2em] text-[#AED16C]">
-                                  Fix Verified ✓
-                                </span>
-                              </motion.div>
-                            )}
-                            {verifyStatus === 'vulnerable' && (
-                              <motion.div
-                                initial={{ opacity: 0, y: 4 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0 }}
-                                className="flex items-center gap-2 px-3 py-2.5 border border-red-400/30 rounded-[2px] bg-red-400/[0.06]"
-                              >
-                                <AlertTriangle size={13} className="text-red-400 shrink-0" />
-                                <span className="font-['Inter'] font-light text-[11px] uppercase tracking-[0.2em] text-red-400">
-                                  Still Vulnerable ✗
-                                </span>
+                                {/* Eyebrow */}
+                                <div className="flex items-center gap-2">
+                                  <RefreshCw size={9} className="text-[#C9A86A]/45" />
+                                  <span className="font-['Inter'] font-light text-[8px] uppercase tracking-[0.35em] text-[#C9A86A]/50">
+                                    Verification Result
+                                  </span>
+                                  <span className="flex-1 h-px bg-[#C9A86A]/8" />
+                                </div>
+
+                                {/* Status banner */}
+                                {verifyStatus === 'verified' ? (
+                                  <div className="flex items-center gap-2.5 px-3 py-2.5 border border-[#AED16C]/30 rounded-[2px] bg-[#AED16C]/[0.06]">
+                                    <CheckCircle2 size={14} className="text-[#AED16C] shrink-0" />
+                                    <div>
+                                      <span className="block font-['Inter'] font-light text-[8px] uppercase tracking-[0.3em] text-[#AED16C]/60" style={{ marginBottom: '1px' }}>Verdict</span>
+                                      <span className="font-['Cormorant_Garamond'] font-light text-[18px] text-[#AED16C] leading-none">Fix Verified ✓</span>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-2.5 px-3 py-2.5 border border-red-400/30 rounded-[2px] bg-red-400/[0.06]">
+                                    <AlertTriangle size={14} className="text-red-400 shrink-0" />
+                                    <div>
+                                      <span className="block font-['Inter'] font-light text-[8px] uppercase tracking-[0.3em] text-red-400/60" style={{ marginBottom: '1px' }}>Verdict</span>
+                                      <span className="font-['Cormorant_Garamond'] font-light text-[18px] text-red-400 leading-none">Still Vulnerable ✗</span>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Leaked data highlight */}
+                                {verifyResult.leaked_data && (
+                                  <div className="px-3 py-2 border border-red-500/25 rounded-[2px] bg-red-500/[0.05]">
+                                    <span className="block font-['Inter'] font-light text-[8px] uppercase tracking-[0.25em] text-red-400/60 mb-1">Leaked Data</span>
+                                    <span className="font-mono text-[11px] text-red-400 font-semibold">{verifyResult.leaked_data}</span>
+                                  </div>
+                                )}
+
+                                {/* Compiled prompt segments */}
+                                {verifyResult.compiled_prompt_segments && verifyResult.compiled_prompt_segments.length > 0 && (
+                                  <div className="flex flex-col gap-1 relative">
+                                    <span className="font-['Inter'] font-light text-[8px] uppercase tracking-[0.25em] text-[#A39E93]/45 mb-0.5">Verify — Prompt Map</span>
+                                    <div className="absolute left-[10px] top-6 bottom-1 w-px bg-[#C9A86A]/8 z-0" />
+                                    {verifyResult.compiled_prompt_segments.map((seg, i) => {
+                                      const isSystem = seg.type === 'system';
+                                      const isPayload = seg.type === 'user_payload';
+                                      const isDefense = seg.type === 'defense_wrapper';
+                                      return (
+                                        <div
+                                          key={i}
+                                          className={cn(
+                                            'relative z-10 bg-black/50 border rounded-[2px] p-2 pl-5 text-[10px]',
+                                            isSystem && 'border-blue-400/15',
+                                            isPayload && 'border-[#C9A86A]/18',
+                                            isDefense && 'border-[#A39E93]/12',
+                                          )}
+                                        >
+                                          <div className={cn(
+                                            'absolute left-[-2px] top-2.5 w-2 h-2 rounded-full border border-black/90',
+                                            isSystem && 'bg-blue-400/25',
+                                            isPayload && 'bg-[#C9A86A]/35',
+                                            isDefense && 'bg-[#A39E93]/15',
+                                          )} />
+                                          <span className={cn(
+                                            'absolute top-0 right-0 font-["Inter"] font-light text-[7px] uppercase tracking-[0.15em] px-1.5 py-0.5',
+                                            isSystem && 'text-blue-400/45',
+                                            isPayload && 'text-[#C9A86A]/55',
+                                            isDefense && 'text-[#A39E93]/45',
+                                          )}>
+                                            {isSystem ? 'System' : isPayload ? 'Payload' : 'Defense'}
+                                          </span>
+                                          <pre className={cn(
+                                            'font-mono whitespace-pre-wrap leading-relaxed',
+                                            isPayload ? 'text-[#AED16C]/70' : 'text-[#A39E93]/60',
+                                          )}>
+                                            {seg.text}
+                                          </pre>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+
+                                {/* Security log */}
+                                {verifyResult.security_log && verifyResult.security_log.length > 0 && (
+                                  <div>
+                                    <span className="font-['Inter'] font-light text-[8px] uppercase tracking-[0.25em] text-[#A39E93]/45 block mb-1">Verify — Security Log</span>
+                                    <div className="border border-[#C9A86A]/8 rounded-[2px] p-3 bg-black/55 font-mono text-[10px] max-h-28 overflow-y-auto">
+                                      {verifyResult.security_log.map((line, i, arr) => (
+                                        <div
+                                          key={i}
+                                          className={cn(
+                                            'leading-relaxed',
+                                            i === arr.length - 1
+                                              ? (line.startsWith('✓') || line.includes('blocked') || line.includes('BLOCKED'))
+                                                ? 'text-[#AED16C] mt-0.5' : 'text-red-400 mt-0.5'
+                                              : (line.startsWith('✓') || line.includes('blocked') || line.includes('BLOCKED'))
+                                                ? 'text-[#AED16C]/65' : 'text-red-400/55'
+                                          )}
+                                        >
+                                          {line}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* LLM response if available */}
+                                {verifyResult.llm_response && (
+                                  <div className={cn(
+                                    'border rounded-[2px] p-3 bg-black/45',
+                                    verifyStatus === 'vulnerable' ? 'border-red-500/15' : 'border-[#AED16C]/12'
+                                  )}>
+                                    <span className={cn(
+                                      'block font-["Inter"] font-light text-[8px] uppercase tracking-[0.25em] mb-2',
+                                      verifyStatus === 'vulnerable' ? 'text-red-400/55' : 'text-[#AED16C]/50'
+                                    )}>Verify — LLM Response</span>
+                                    <p className="font-mono text-[10px] text-[#A39E93]/65 leading-relaxed">
+                                      {verifyResult.llm_response}
+                                    </p>
+                                  </div>
+                                )}
                               </motion.div>
                             )}
                           </AnimatePresence>

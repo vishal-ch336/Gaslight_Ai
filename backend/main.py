@@ -24,10 +24,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS middleware — allow Vite dev server
+# CORS middleware — allow any localhost port (hackathon dev)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origin_regex=r"http://localhost:.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
