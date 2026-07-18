@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+passlib[bcrypt]
+python-jose[cryptography]
+requests
+sentence-transformers==2.7.0
+pydantic
+python-dotenv
